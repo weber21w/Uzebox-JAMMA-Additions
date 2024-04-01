@@ -42,10 +42,11 @@
 #define HEADER_SIZE 512
 #define MARKER_SIZE 6
 
-#define PERIPHERAL_MOUSE 1
-#define PERIPHERAL_KEYBOARD 2
-#define PERIPHERAL_MULTITAP 4
-#define PERIPHERAL_ESP8266 8
+#define PERIPHERAL_MOUSE		1
+#define PERIPHERAL_KEYBOARD		2
+#define PERIPHERAL_MULTITAP		4
+#define PERIPHERAL_ESP8266		8
+#define PERIPHERAL_LIGHTGUN		16
 
 #define JAMMA_ROTATE_90 1
 #define JAMMA_ROTATE_180 2
@@ -371,6 +372,10 @@ int main(int argc,char **argv)
 				rom.header.psupport |= PERIPHERAL_KEYBOARD;
 				fprintf(stderr,"\tESP8266: Supported\n");
 
+			}else if(!strncmp(line,"lightgun=support",16)){
+				rom.header.psupport |= PERIPHERAL_LIGHTGUN;
+				fprintf(stderr,"\tLightgun: Supported\n");
+
 			}else if(!strncmp(line,"mouse=default",13)){
 				rom.header.psupport |= PERIPHERAL_MOUSE;
 				rom.header.pdefault |= PERIPHERAL_MOUSE;
@@ -390,6 +395,11 @@ int main(int argc,char **argv)
 				rom.header.psupport |= PERIPHERAL_ESP8266;
 				rom.header.pdefault |= PERIPHERAL_ESP8266;
 				fprintf(stderr,"\tESP8266: Default\n");
+
+			}else if(!strncmp(line,"lightgun=default",16)){
+				rom.header.psupport |= PERIPHERAL_LIGHTGUN;
+				rom.header.pdefault |= PERIPHERAL_LIGHTGUN;
+				fprintf(stderr,"\tLightgun: Default\n");
 
 			}else if(!strncmp(line,"JAMMA=rotate90",14)){
 				rom.header.jamma |= JAMMA_ROTATE_90;
