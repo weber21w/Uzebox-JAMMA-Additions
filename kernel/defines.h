@@ -169,6 +169,12 @@
 		#define SNES_MOUSE 0
 	#endif
 	
+	#if SNES_MOUSE == 1
+		#ifndef SNES_MOUSE_BASE
+			#define SNES_MOUSE_BASE 1 //light version of mouse support for user implementations
+		#endif
+	#endif
+
 	/*
 	 * Activates the MIDI-IN support. 
 	 * Not supported with video mode 2.
@@ -299,7 +305,7 @@
 	#endif
 		
 	/*
-	 * Define the ammount of memory to allocate
+	 * Define the amount of memory to allocate
 	 * for ramtiles 
 	 * (used in video modes that supports ramtiles)
 	 */
@@ -309,8 +315,8 @@
 	#endif
 
 	/*
-	 * Defines the numbers of sprites to alloacate ressources for.
-	 * (used in video modes that supports sprites)
+	 * Defines the numbers of sprites to allocate ressources for.
+	 * (used in video modes that support sprites)
 	 */
 	#ifndef MAX_SPRITES
 		#define MAX_SPRITES 32
@@ -319,7 +325,7 @@
 	/*
 	 * Number of screen sections to allocate memory for
 	 * Min=1, Max=SCREEN_TILES_V*TILE_HEIGHT
-	 * (used in video modes that supports screen sections)
+	 * (used in video modes that support screen sections)
 	 */
 	#ifndef SCREEN_SECTIONS_COUNT
 		#define SCREEN_SECTIONS_COUNT 1
@@ -339,8 +345,8 @@
 	 * 
 	 * MIXER_TYPE_VSYNC  (0)	Mixes 262 samples during each VSYNC. Requires a 524 RAM buffer. (Default)
 	 * MIXER_TYPE_INLINE (1)	Mixes 1 sample each HSYNC. Does not require a RAM buffer. 
-	 *							Note: Video modes 2 and 3 with scrolling don't have enough free cycles
-	 *						    during HBLANK to use this mixer. 
+	 *				Note: Video modes 2 and 3 with scrolling don't have enough free cycles
+	 *				during HBLANK to use this mixer. 
 	 */
 	#ifndef SOUND_MIXER
 		#define SOUND_MIXER MIXER_TYPE_VSYNC
@@ -368,48 +374,49 @@
 	//sound player master volume
 	#define DEFAULT_MASTER_VOL	0x6f
 
-	//Joypad standard buttons mappings.
-	//Applies to both NES & SNES gamepads.
+	//SNES joypad standard buttons mappings
 	#define TYPE_SNES 0
-	#define TYPE_NES 1
+	#define BTN_SR	   2048
+	#define BTN_SL	   1024
+	#define BTN_X	   512
+	#define BTN_A	   256
+	#define BTN_RIGHT  128
+	#define BTN_LEFT   64
+	#define BTN_DOWN   32
+	#define BTN_UP     16
+	#define BTN_START  8
+	#define BTN_SELECT 4
+	#define BTN_Y      2
+	#define BTN_B      1 
 
-	#if JOYSTICK == TYPE_SNES
-		#define BTN_SR	   2048
-		#define BTN_SL	   1024
-		#define BTN_X	   512
-		#define BTN_A	   256
-		#define BTN_RIGHT  128
-		#define BTN_LEFT   64
-		#define BTN_DOWN   32
-		#define BTN_UP     16
-		#define BTN_START  8
-		#define BTN_SELECT 4
-		#define BTN_Y      2
-		#define BTN_B      1
-	#elif JOYSTICK == TYPE_NES
-		#define BTN_SR	   2048 //unused
-		#define BTN_SL	   1024 //unused		
-		#define BTN_X	   512 //unused
-		#define BTN_Y      256 //unused
-
-		#define BTN_RIGHT  128
-		#define BTN_LEFT   64
-		#define BTN_DOWN   32
-		#define BTN_UP     16
-		#define BTN_START  8
-		#define BTN_SELECT 4
-		#define BTN_B      2
-		#define BTN_A      1
-	#endif 
-
+	//Mouse definitions
 	#define BTN_MOUSE_LEFT 512
 	#define BTN_MOUSE_RIGHT 256
 
+	//For Hyperkin compatibility reasons, you may wish to implement sensitivity in software instead
 	#define MOUSE_SENSITIVITY_LOW    0b00
 	#define MOUSE_SENSITIVITY_MEDIUM 0b10
 	#define MOUSE_SENSITIVITY_HIGH   0b01
 
+	//Lightgun definitions
+	#define LG_TRIGGER	(1<<12)//1 if not pulled
+	#define LG_SENSE	(1<13)
+
+	//Device signatures and button masks
+	#define MOUSE_SIGNATURE	(1<<15)
+	#define LIGHTGUN_SIGNATURE	LG_TRIGGER
+	#define JOYPAD_MASK	(0b0000111111111111)
+	#define LIGHTGUN_MASK	(0b0011000000000000)
 	
+	#ifndef MOUSE_DELAY_LATCH //updated for compatibility with Hyperkin mouse
+		#define MOUSE_DELAY_LATCH		12
+		#define MOUSE_DELAY_PRE_CLOCK		2
+		#define MOUSE_DELAY_POST_CLOCK		2
+		#define MOUSE_DELAY_EXT_INTER		43	
+		#define MOUSE_DELAY_EXT_PRE_CLOCK	12
+		#define MOUSE_DELAY_EXT_POST_CLOCK	2
+	#endif
+
 	//Screen sections flags
 	#define SCT_PRIORITY_BG  0
 	#define SCT_PRIORITY_SPR 1
@@ -499,12 +506,11 @@
 	#define HDRIVE_CL_TWICE 909
 	#define SYNC_HSYNC_PULSES 253
 
-	// Used to identify Timer1 value displacement relative to original
-	// kernel. Use to restore Timer1 in video modes which use it for their
-	// video frame code (scanline termination with Timer1 overflow), so
-	// they remain compatible with different kernel versions. Subtract it
-	// from the value you are normally programming Timer1 when restoring.
-	// See frame_end: in Mode 13's videoMode13core.s as example.
+	// Used to identify Timer1 value displacement relative to original kernel.
+	// Used to restore Timer1 in video modes which use it for their video frame code
+	// (scanline termination with Timer1 overflow), so they remain compatible with different
+	// kernel versions. Subtract it from the value you are normally programming Timer1 when
+	// restoring. See frame_end: in Mode 13's videoMode13core.s as an example.
 	#define TIMER1_DISPLACE 57
 
 	#define SYNC_PRE_EQ_PULSES 6
@@ -594,9 +600,8 @@
 
 	#ifdef HSYNC_USABLE_CYCLES 
 		#if HSYNC_USABLE_CYCLES - AUDIO_OUT_HSYNC_CYCLES <0
-			#error There is not enough CPU cycles to support the build options. Disable the UART (-DUART=0), audio channel 5 (-DSOUND_CHANNEL_5_ENABLE=0) or the inline mixer (-DSOUND_MIXER=0).
+			#error Not enough CPU cycles to support the build options. Disable UART (-DUART=0), audio channel 5 (-DSOUND_CHANNEL_5_ENABLE=0) or the inline mixer (-DSOUND_MIXER=0).
 		#endif 
 	#endif
 
 #endif
-
