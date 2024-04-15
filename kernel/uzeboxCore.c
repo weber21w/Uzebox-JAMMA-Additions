@@ -188,14 +188,12 @@ void Initialize(void){
 
 	if(!isEepromFormatted()) FormatEeprom();
 
-	//InitSoundPort(); //ramp-up sound to avoid click
-
 	#if SOUND_MIXER == MIXER_TYPE_VSYNC
 	
 		//Initialize the mixer buffer
 		//ramp up to avoid initial click
 		for(int j=0;j<MIX_BANK_SIZE*2;j++){
-			mix_buf[j]=0x80;//(i<128?i:128);
+			mix_buf[j]=0x80;
 		}
 
 		mix_pos=mix_buf;
@@ -246,13 +244,14 @@ void Initialize(void){
 
 void ReadButtons(){
 	unsigned int p1ButtonsLo=0,p2ButtonsLo=0;
-	unsigned char i;
+	unsigned char i,j;
 
 	//latch controllers
 	JOYPAD_OUT_PORT|=_BV(JOYPAD_LATCH_PIN);
-	#if SNES_MOUSE == 1
+	#if SNES_MOUSE_BASE == 1 //SNES_MOUSE_BASE is enabled if SNES_MOUSE is(it's just core functionality without cursor/etc.)
 		if(snesMouseEnabled){
-			WaitUs(1);
+			for(j=0;j<MOUSE_DELAY_LATCH;j++)
+				Wait200ns();
 		}else{
 			Wait200ns();
 			Wait200ns();
@@ -270,9 +269,10 @@ void ReadButtons(){
 		p1ButtonsLo>>=1;
 		p2ButtonsLo>>=1;
 
-		#if SNES_MOUSE == 1
+		#if SNES_MOUSE_BASE == 1
 			if(snesMouseEnabled){
-				WaitUs(5);
+				for(j=0;j<MOUSE_DELAY_PRE_CLOCK;j++)
+					Wait200ns();
 			}else{
 				Wait200ns();
 				Wait200ns();
@@ -285,14 +285,10 @@ void ReadButtons(){
 		//pulse clock pin		
 		JOYPAD_OUT_PORT&=~(_BV(JOYPAD_CLOCK_PIN));
 		
-		if((JOYPAD_IN_PORT&(1<<JOYPAD_DATA1_PIN))==0) p1ButtonsLo|=(1<<15);
-		if((JOYPAD_IN_PORT&(1<<JOYPAD_DATA2_PIN))==0) p2ButtonsLo|=(1<<15);
-		
-		JOYPAD_OUT_PORT|=_BV(JOYPAD_CLOCK_PIN);
-		
-		#if SNES_MOUSE == 1
+		#if SNES_MOUSE_BASE == 1
 			if(snesMouseEnabled){
-				WaitUs(5);
+				for(j=0;j<MOUSE_DELAY_POST_CLOCK;j++)
+					Wait200ns();
 			}else{
 				Wait200ns();
 				Wait200ns();
@@ -301,16 +297,14 @@ void ReadButtons(){
 			Wait200ns();
 			Wait200ns();
 		#endif
-
+		if((JOYPAD_IN_PORT&(1<<JOYPAD_DATA1_PIN))==0) p1ButtonsLo|=(1<<15);
+		if((JOYPAD_IN_PORT&(1<<JOYPAD_DATA2_PIN))==0) p2ButtonsLo|=(1<<15);
+		
+		JOYPAD_OUT_PORT|=_BV(JOYPAD_CLOCK_PIN);
 	}
 
-	#if JOYSTICK==TYPE_SNES
-		joypad1_status_lo=p1ButtonsLo;
-		joypad2_status_lo=p2ButtonsLo;
-	#else
-		joypad1_status_lo=p1ButtonsLo&0xff;
-		joypad2_status_lo=p2ButtonsLo&0xff;	
-	#endif
+	joypad1_status_lo=p1ButtonsLo;
+	joypad2_status_lo=p2ButtonsLo;
 
 	if(joypad1_status_lo==(BTN_START+BTN_SELECT+BTN_Y+BTN_B) || joypad2_status_lo==(BTN_START+BTN_SELECT+BTN_Y+BTN_B)){
 		SoftReset();
@@ -319,13 +313,13 @@ void ReadButtons(){
 }
 
 /**
- * Initiates teh buttons reading and detect if joypads are connected.
- * When no device are plugged, the internal AVR pullup will drive the data lines high
- * otherwise the controller's shift register will drive the data lines low after 
- * completing a transfer. (The shift register's serial input pin is tied to ground)
+ * Initiates the buttons reading and detect if joypads are connected.
+ * When no devices are connected, the internal AVR pullups will drive the data lines high.
+ * Otherwise the controller's shift register will drive the data lines low after completing
+ * a transfer. (The shift register's serial input pin is tied to ground)
  *
- * This functions is call by the kernel during VSYNC or can be called by the user
- * program when CONTROLLERS_VSYNC_READ==0.
+ * This function is called by the kernel during VSYNC or can be called by the user program
+ * when CONTROLLERS_VSYNC_READ==0.
 */
 void ReadControllers(){
 
@@ -338,44 +332,37 @@ void ReadControllers(){
 	ReadButtons();
 }
 
-
-
-
-
-
-
-#if SNES_MOUSE == 1
-
-//TODO: Fix potential timing issues with the Hyperkin SNES MOUSE. See: http://uzebox.org/forums/viewtopic.php?f=4&t=11101
-
-//read mouse bits 16 to 31
-//spec requires a 2.5ms delay between the two 16bits chunks
-//but the mouse works fine without it. 
+#if SNES_MOUSE_BASE == 1 //included if SNES_MOUSE == 1
+//read mouse bits 16 to 31, after the initial bits 0 to 15 from the joypad format
 void ReadMouseExtendedData(){
 	//read the extended bits. Applies only if the mouse is plugged.
 	//if bit 15 of standard word is 1, a mouse is plugged.
 	unsigned int p1ButtonsHi=0,p2ButtonsHi=0;
-	unsigned char i;
+	unsigned char i,j;
+
+	for(j=0;j<MOUSE_DELAY_EXT_INTER;j++)
+		Wait200ns();
 
 	if(joypad1_status_lo&(1<<15) || joypad2_status_lo&(1<<15)){
-
-		//WaitUs(1);
 
 		for(i=0;i<16;i++){
 	
 			p1ButtonsHi<<=1;
 			p2ButtonsHi<<=1;
 
-			//pulse clock pin		
-			JOYPAD_OUT_PORT&=~(_BV(JOYPAD_CLOCK_PIN));
-			Wait200ns();
-			Wait200ns();
+			for(j=0;j<MOUSE_DELAY_EXT_PRE_CLOCK;j++)
+				Wait200ns();
+
+			JOYPAD_OUT_PORT&=~(_BV(JOYPAD_CLOCK_PIN));//pulse clock pin
+
+			for(j=0;j<MOUSE_DELAY_EXT_POST_CLOCK;j++)
+				Wait200ns();
 	
 			if((JOYPAD_IN_PORT&(1<<JOYPAD_DATA1_PIN))==0) p1ButtonsHi|=1;
 			if((JOYPAD_IN_PORT&(1<<JOYPAD_DATA2_PIN))==0) p2ButtonsHi|=1;
 
 			JOYPAD_OUT_PORT|=_BV(JOYPAD_CLOCK_PIN);
-			WaitUs(5);
+
 		}
 	
 		joypad1_status_hi=p1ButtonsHi;
@@ -383,10 +370,12 @@ void ReadMouseExtendedData(){
 
 	}
 }
+#endif
 
+#if SNES_MOUSE == 1 //full kernel mouse support(not included in SNES_MOUSE_BASE)
 
 /*
- This method activates teh code to read the mouse. 
+ This method activates the code to read the mouse. 
  Currently reading the mouse takes a much a 2.5 scanlines.
 */
 unsigned char playDevice=0,playPort=0,mouseSpriteIndex,mouseWidth,mouseHeight;
@@ -424,6 +413,11 @@ unsigned int GetActionButton(){
 	return actionButton;
 }
 
+/* Note that Get/SetMouseSensitivity() do not work on the Hyperkin mouse.
+ * For compatibility you are encouraged to implement sensitivity in software.
+ * If implementing in software to cover both mouse versions, why use this?
+*/
+#if SNES_MOUSE_SENSITIVITY == 1
 unsigned char GetMouseSensitivity(){
 	unsigned char sens=-1;
 
@@ -479,10 +473,7 @@ bool SetMouseSensitivity(unsigned char value){
 
 	return false;
 }
-
-
-
-
+#endif
 
 void ProcessMouseMovement(void){
 	unsigned int joy;
