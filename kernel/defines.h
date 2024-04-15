@@ -254,7 +254,7 @@
 	/*
 	 * Define wavetable
 	 *
-	 * Specify the location of the wave table
+	 * Specify the location of the wave table, use -DMIXER_WAVES=.. to use custom
 	 */
 	#ifndef MIXER_WAVES
 		#define MIXER_WAVES "data/sounds.inc"
@@ -372,28 +372,28 @@
 	#define VIDEOCE_PIN PB4
 
 	//sound player master volume
-	#define DEFAULT_MASTER_VOL	0x6f
+	#define DEFAULT_MASTER_VOL 0x6f
 
 	//SNES joypad standard buttons mappings
-	#define TYPE_SNES 0
-	#define BTN_SR	   2048
-	#define BTN_SL	   1024
-	#define BTN_X	   512
-	#define BTN_A	   256
-	#define BTN_RIGHT  128
-	#define BTN_LEFT   64
-	#define BTN_DOWN   32
-	#define BTN_UP     16
-	#define BTN_START  8
-	#define BTN_SELECT 4
-	#define BTN_Y      2
-	#define BTN_B      1 
+	#define TYPE_SNES	0
+	#define BTN_SR		2048
+	#define BTN_SL		1024
+	#define BTN_X		512
+	#define BTN_A		256
+	#define BTN_RIGHT	128
+	#define BTN_LEFT	64
+	#define BTN_DOWN	32
+	#define BTN_UP		16
+	#define BTN_START	8
+	#define BTN_SELECT	4
+	#define BTN_Y		2
+	#define BTN_B		1 
 
 	//Mouse definitions
 	#define BTN_MOUSE_LEFT 512
 	#define BTN_MOUSE_RIGHT 256
 
-	//For Hyperkin compatibility reasons, you may wish to implement sensitivity in software instead
+	//For Hyperkin compatibility reasons, you should implement sensitivity in software instead
 	#define MOUSE_SENSITIVITY_LOW    0b00
 	#define MOUSE_SENSITIVITY_MEDIUM 0b10
 	#define MOUSE_SENSITIVITY_HIGH   0b01
@@ -407,7 +407,7 @@
 	#define LIGHTGUN_SIGNATURE	LG_TRIGGER
 	#define JOYPAD_MASK	(0b0000111111111111)
 	#define LIGHTGUN_MASK	(0b0011000000000000)
-	
+
 	#ifndef MOUSE_DELAY_LATCH //updated for compatibility with Hyperkin mouse
 		#define MOUSE_DELAY_LATCH		12
 		#define MOUSE_DELAY_PRE_CLOCK		2
@@ -418,40 +418,40 @@
 	#endif
 
 	//Screen sections flags
-	#define SCT_PRIORITY_BG  0
-	#define SCT_PRIORITY_SPR 1
+	#define SCT_PRIORITY_BG		0
+	#define SCT_PRIORITY_SPR	1
 
 	//Sprites Options
-	#define SPR_OVERFLOW_CLIP   0
-	#define SPR_OVERFLOW_ROTATE 1
-	#define SPR_FLIP_X 1
-	#define SPR_FLIP_Y 2
+	#define SPR_OVERFLOW_CLIP	0
+	#define SPR_OVERFLOW_ROTATE	1
+	#define SPR_FLIP_X		1
+	#define SPR_FLIP_Y		2
 
 
 	//Patch commands
-	#define PC_ENV_SPEED	 0
-	#define PC_NOISE_PARAMS	 1
-	#define PC_WAVE			 2
-	#define PC_NOTE_UP		 3
-	#define PC_NOTE_DOWN	 4
-	#define PC_NOTE_CUT		 5
-	#define PC_NOTE_HOLD 	 6
-	#define PC_ENV_VOL		 7
-	#define PC_PITCH		 8
-	#define PC_TREMOLO_LEVEL 9
-	#define PC_TREMOLO_RATE	10
+	#define PC_ENV_SPEED		0
+	#define PC_NOISE_PARAMS		1
+	#define PC_WAVE			2
+	#define PC_NOTE_UP		3
+	#define PC_NOTE_DOWN		4
+	#define PC_NOTE_CUT		5
+	#define PC_NOTE_HOLD		6
+	#define PC_ENV_VOL		7
+	#define PC_PITCH		8
+	#define PC_TREMOLO_LEVEL	9
+	#define PC_TREMOLO_RATE		10
 	#define PC_SLIDE		11
-	#define PC_SLIDE_SPEED	12
-	#define PC_LOOP_START	13
+	#define PC_SLIDE_SPEED		12
+	#define PC_LOOP_START		13
 	#define PC_LOOP_END		14
 	#define PATCH_END		0xff
 
 
 	#if SOUND_MIXER == MIXER_TYPE_INLINE
-		#define WAVE_CHANNELS 3
-		#define NOISE_CHANNELS 1
-		#define MIXER_CHAN4_TYPE 0
-		#define CHANNEL_STRUCT_SIZE 6
+		#define WAVE_CHANNELS		3
+		#define NOISE_CHANNELS		1
+		#define MIXER_CHAN4_TYPE	0
+		#define CHANNEL_STRUCT_SIZE	6
 
 		#if SOUND_CHANNEL_5_ENABLE==1
 			#define PCM_CHANNELS 1
@@ -479,75 +479,75 @@
 	#else
 
 		#if MIXER_CHAN4_TYPE == 0
-			#define WAVE_CHANNELS 3
-			#define NOISE_CHANNELS 1
-			#define PCM_CHANNELS 0		
+			#define WAVE_CHANNELS	3
+			#define NOISE_CHANNELS	1
+			#define PCM_CHANNELS	0	
 		#else
-			#define WAVE_CHANNELS 3
-			#define NOISE_CHANNELS 0
-			#define PCM_CHANNELS 1
+			#define WAVE_CHANNELS	3
+			#define NOISE_CHANNELS	0
+			#define PCM_CHANNELS	1
 		#endif
 		
 		#define CHANNELS WAVE_CHANNELS+NOISE_CHANNELS+PCM_CHANNELS
-		#define CHANNEL_STRUCT_SIZE 6
+		#define CHANNEL_STRUCT_SIZE	6
 
-		#define AUDIO_OUT_HSYNC_CYCLES 135
-		#define AUDIO_OUT_VSYNC_CYCLES 68
+		#define AUDIO_OUT_HSYNC_CYCLES	135
+		#define AUDIO_OUT_VSYNC_CYCLES	68
 
 	#endif
 
-	#define SWEEP_UP   0x80
-	#define SWEEP_DOWN 0x00
+	#define SWEEP_UP	0x80
+	#define SWEEP_DOWN	0x00
 
 
 	//Line rate timer delay: 15.73426 kHz*2 = 1820/2 = 910
 	//2x is to account for vsync equalization & serration pulse that are at 2x line rate
-	#define HDRIVE_CL 1819
-	#define HDRIVE_CL_TWICE 909
-	#define SYNC_HSYNC_PULSES 253
+	#define HDRIVE_CL		1819
+	#define HDRIVE_CL_TWICE		909
+	#define SYNC_HSYNC_PULSES	253
 
 	// Used to identify Timer1 value displacement relative to original kernel.
 	// Used to restore Timer1 in video modes which use it for their video frame code
 	// (scanline termination with Timer1 overflow), so they remain compatible with different
 	// kernel versions. Subtract it from the value you are normally programming Timer1 when
 	// restoring. See frame_end: in Mode 13's videoMode13core.s as an example.
-	#define TIMER1_DISPLACE 57
+	#define TIMER1_DISPLACE		57
 
-	#define SYNC_PRE_EQ_PULSES 6
-	#define SYNC_EQ_PULSES 6
-	#define SYNC_POST_EQ_PULSES 6
+	#define SYNC_PRE_EQ_PULSES	6
+	#define SYNC_EQ_PULSES		6
+	#define SYNC_POST_EQ_PULSES	6
 
-	#define SYNC_FLAG_VSYNC			1
-	#define SYNC_FLAG_FIELD			2
+	#define SYNC_FLAG_VSYNC		1
+	#define SYNC_FLAG_FIELD		2
 
-	#define SYNC_PIN PB0
-	#define SYNC_PORT PORTB
-	#define DATA_PORT PORTC
+	#define SYNC_PIN	PB0
+	#define SYNC_PORT	PORTB
+	#define DATA_PORT	PORTC
 
 	#define VIDEO_PORT _SFR_IO_ADDR(DATA_PORT)
 
 	#define MIX_BANK_SIZE (SYNC_HSYNC_PULSES + ((SYNC_PRE_EQ_PULSES+SYNC_EQ_PULSES+SYNC_POST_EQ_PULSES)/2))
 	#define MIX_BUF_SIZE MIX_BANK_SIZE*2
-	//#define MIDI_RX_BUF_SIZE 128
+	//#define MIDI_RX_BUF_SIZE	128
 
-	#define JOYPAD_OUT_PORT PORTA
-	#define JOYPAD_IN_PORT PINA
-	#define JOYPAD_CLOCK_PIN PA3
-	#define JOYPAD_LATCH_PIN PA2
-	#define JOYPAD_DATA1_PIN PA0
-	#define JOYPAD_DATA2_PIN PA1
+	#define JOYPAD_OUT_PORT		PORTA
+	#define JOYPAD_IN_PORT		PINA
+	#define JOYPAD_CLOCK_PIN	PA3
+	#define JOYPAD_LATCH_PIN	PA2
+	#define JOYPAD_DATA1_PIN	PA0
+	#define JOYPAD_DATA2_PIN	PA1
 
-	#define EEPROM_BLOCK_SIZE 32
-	#define EEPROM_MAX_BLOCKS 64 //(2048/EEPROM_BLOCK_SIZE)
-	#define EEPROM_HEADER_SIZE 1
-	#define EEPROM_SIGNATURE 0x555A
-	#define EEPROM_SIGNATURE2 0x555B
-	#define EEPROM_FREE_BLOCK 0xffff
-	#define EEPROM_OK 0x0
-	#define EEPROM_ERROR_INVALID_BLOCK 0x1
-	#define EEPROM_ERROR_FULL 0x2
-	#define EEPROM_ERROR_BLOCK_NOT_FOUND 0x3
-	#define EEPROM_ERROR_NOT_FORMATTED 0x4
+	#define EEPROM_BLOCK_SIZE	32
+	#define EEPROM_MAX_BLOCKS	64 //(2048/EEPROM_BLOCK_SIZE)
+	#define EEPROM_HEADER_SIZE	1
+	#define EEPROM_SIGNATURE	0x555A
+	#define EEPROM_SIGNATURE2	0x555B
+	#define EEPROM_FREE_BLOCK	0xffff
+	#define EEPROM_OK		0x0
+	#define EEPROM_ERROR_INVALID_BLOCK	0x1
+	#define EEPROM_ERROR_FULL		0x2
+	#define EEPROM_ERROR_BLOCK_NOT_FOUND	0x3
+	#define EEPROM_ERROR_NOT_FORMATTED	0x4
 
 	#if VIDEO_MODE == 1 
 		#include "videoMode1/videoMode1.def.h"
