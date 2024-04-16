@@ -46,6 +46,7 @@ static const struct option longopts[] ={
     { "swrenderer" , no_argument      , NULL, 'w' },
     { "novsync"    , no_argument      , NULL, 'v' },
     { "mouse"      , no_argument      , NULL, 'm' },
+    { "lightgun"   , no_argument      , NULL, 'u' },
     { "2p"         , no_argument      , NULL, '2' },
     { "jamma"      , no_argument      , NULL, 'j' },
     { "rotate"     , required_argument, NULL, 'o' },
@@ -68,7 +69,7 @@ static const struct option longopts[] ={
     {NULL          , 0                , NULL, 0}
 };
 
-   static const char* shortopts = "hnfczlwxm2jo:i:re:p:bdt:k:s:v";
+   static const char* shortopts = "hnfczlwxmu2jo:i:re:p:bdt:k:s:v";
 
 #define printerr(fmt,...) fprintf(stderr,fmt,##__VA_ARGS__)
 
@@ -83,8 +84,9 @@ void showHelp(char* programName){
     printerr("\t--fullscreen -f     Enable full screen\n");
     printerr("\t--swrenderer -w     Use SDL software renderer (probably faster on older computers)\n");
     printerr("\t--novsync -v        Disables VSYNC (does not apply to software renderer)\n");
-    printerr("\t--mouse -m          Start with emulated mouse enabled\n");
+    printerr("\t--mouse -m          Start with emulated mouse enabled on P1 port\n");
     printerr("\t--2p -2             Start with snes 2p mode enabled\n");
+    printerr("\t--lightgun -u       Start with lightgun mode enabled on P1 port\n");
     printerr("\t--jamma -j          Start with JAMMA mode enabled\n");
     printerr("\t--rotate -o <angle> Rotate display 90/180/270 degrees(overrides .uze settings, no arg=90)\n");
     printerr("\t--mirror -i <dir>   0: no mirror, 1: horizontal, 2: vertical, 3: both\n");
@@ -171,6 +173,9 @@ int main(int argc,char **argv)
             break;
         case 'm':
             uzebox.pad_mode = avr8::SNES_MOUSE;
+            break;
+        case 'u':
+            uzebox.pad_mode = avr8::SNES_LIGHTGUN;
             break;
         case '2':
             uzebox.pad_mode = avr8::SNES_PAD2;
@@ -281,6 +286,12 @@ int main(int argc,char **argv)
                     uzebox.pad_mode = avr8::SNES_MOUSE;
                     printf(".uze setting: Mouse support enabled\n");
                 }
+                // enable lightgun support if required
+                if(uzeRomHeader.pdefault & PERIPHERAL_LIGHTGUN){
+                    uzebox.pad_mode = avr8::SNES_LIGHTGUN;
+                    printf(".uze setting: Lightgun support enabled\n");
+                }
+
                 if(uzeRomHeader.jamma & JAMMA_ROTATE_90){
                     uzebox.orientation = 90;
                     printf(".uze setting: Rotate 90\n");
