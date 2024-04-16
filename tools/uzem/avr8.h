@@ -467,6 +467,7 @@ public:
 	u8  pixel_raw;          // Raw (8 bit) input pixel
 	bool fullscreen;
 	bool jamma;
+	int monitorWidth, monitorHeight;
 	int orientation; //default: -1(no rotation), 90, 180, 270, mostly for JAMMA(.uze JAMMA settings can be overriden with flag)
 	SDL_RendererFlip mirror; //default: SDL_FLIP_NONE, 1: SDL_FLIP_HORIZONTAL, 2: SDL_FLIP_VERTICAL, 3: Both
 
@@ -483,7 +484,7 @@ public:
 	// NES bit order:  A, B, Select, Start, Up, Down, Left, Right
 	u32 buttons[2], latched_buttons[2];
 	int mouse_scale;
-	enum { NES_PAD, SNES_PAD, SNES_PAD2, SNES_MOUSE } pad_mode;
+	enum { NES_PAD, SNES_PAD, SNES_PAD2, SNES_MOUSE, SNES_LIGHTGUN } pad_mode;
 	const char* joystickFile;
 	bool new_input_mode;
 
