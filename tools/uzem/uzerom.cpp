@@ -82,6 +82,8 @@ bool loadUzeImage(char* in_filename,RomHeader *header,u8 *buffer){
         if(header->psupport & PERIPHERAL_KEYBOARD){ snprintf(psupport_str+strlen(psupport_str), sizeof(psupport_str)-strlen(psupport_str), "Keyboard,"); }
         if(header->psupport & PERIPHERAL_MULTITAP){ snprintf(psupport_str+strlen(psupport_str), sizeof(psupport_str)-strlen(psupport_str), "Multitap,"); }
         if(header->psupport & PERIPHERAL_ESP8266){ snprintf(psupport_str+strlen(psupport_str), sizeof(psupport_str)-strlen(psupport_str), "ESP8266,"); }
+        if(header->psupport & PERIPHERAL_LIGHTGUN) { snprintf(psupport_str+strlen(psupport_str), sizeof(psupport_str)-strlen(psupport_str), "Lightgun,"); }
+
         if(strlen(psupport_str) && psupport_str[strlen(psupport_str)-1] == ','){ psupport_str[strlen(psupport_str)-1] == '\0'; } // remove trailing comma, if present
 
         //header->pdefault // the peripherals that should be "connected" at start(save the user some hotkey presses)
@@ -89,6 +91,8 @@ bool loadUzeImage(char* in_filename,RomHeader *header,u8 *buffer){
         if(header->pdefault & PERIPHERAL_KEYBOARD){ snprintf(pdefault_str+strlen(pdefault_str), sizeof(pdefault_str)-strlen(pdefault_str), "Keyboard,"); }
         if(header->pdefault & PERIPHERAL_MULTITAP){ snprintf(pdefault_str+strlen(pdefault_str), sizeof(pdefault_str)-strlen(pdefault_str), "Multitap,"); }
         if(header->pdefault & PERIPHERAL_ESP8266){ snprintf(pdefault_str+strlen(pdefault_str), sizeof(pdefault_str)-strlen(pdefault_str), "ESP8266,"); }
+        if(header->pdefault & PERIPHERAL_LIGHTGUN){ snprintf(pdefault_str+strlen(pdefault_str), sizeof(pdefault_str)-strlen(pdefault_str), "Lightgun,"); }
+
         if(strlen(pdefault_str) && pdefault_str[strlen(pdefault_str)-1] == ','){ pdefault_str[strlen(pdefault_str)-1] == '\0'; } // remove trailing comma, if present
 
         if(header->jamma & JAMMA_ROTATE_90){ snprintf(jamma_str+strlen(jamma_str), sizeof(jamma_str)-strlen(jamma_str), "Rotate 90,"); }
@@ -215,4 +219,3 @@ bool loadHex(const char *in_filename,unsigned char *buffer,unsigned int *bytesRe
 
 	return true;
 }
-
