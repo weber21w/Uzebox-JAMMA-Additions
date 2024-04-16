@@ -49,6 +49,7 @@ More info at uzebox.org
 #endif // NOGDB
 #include "SDEmulator.h"
 #include "Keyboard.h"
+#include "Lightgun.h"
 #include "logo.h"
 
 using namespace std;
@@ -269,6 +270,7 @@ static u8 encode_delta(int d)
 	return result;
 }
 
+
 u32 hsync_more_col;
 u32 hsync_less_col;
 
@@ -439,6 +441,7 @@ void avr8::write_io_x(u8 addr,u8 value)
 						shutdown(0);
 					}
 
+					buttons[0] |= 0xFFFF8000;
 
 					if (pad_mode == SNES_MOUSE)
 					{
@@ -463,8 +466,51 @@ void avr8::write_io_x(u8 addr,u8 value)
 							SDL_GetRelativeMouseState(&mouse_dx,&mouse_dy);
 						}
 					}
-					else
-						buttons[0] |= 0xFFFF8000;
+					else if (pad_mode == SNES_LIGHTGUN)
+					{
+						if(gunTargetSurfaceInitialized == 0){
+							gunTargetSurfaceInitialized = 1;
+							gunCursorImage = SDL_CreateRGBSurfaceFrom((void *)gunCursorPixelData,GUN_CURSOR_W,GUN_CURSOR_H,32,GUN_CURSOR_W*4,0x00FF0000U,0x0000FF00U,0x000000FFU,0xFF000000U);
+
+							gunCursor = SDL_CreateColorCursor(gunCursorImage,(GUN_CURSOR_W/2)-1,(GUN_CURSOR_H/2)-1); /* NULL if failed */
+							gunTargetSurface = SDL_CreateRGBSurfaceWithFormat(0,1,1,32,SDL_PIXELFORMAT_RGB888);
+
+							if(gunCursor != NULL)
+    								SDL_SetCursor(gunCursor);
+
+							gunEye.w = gunEye.h = 1; //1x1 target surface to read from Renderer
+    							SDL_ShowCursor(SDL_ENABLE);
+						}
+						gunLatchedData = ~((1<<LG_TRIGGER_BIT)|buttons[0]);//trigger is inverted(can be used as signature)
+						u8 gun_buttons = SDL_GetMouseState(&gunEye.x,&gunEye.y);
+
+						if (gun_buttons & SDL_BUTTON_LMASK)//trigger pressed(inverted)
+							gunLatchedData |= (1<<LG_TRIGGER_BIT);//trigger is inverted(pulled = 0)
+
+						//relatively slow, but it's non-trivial to convert to surface coordinates directly as the window scales...
+						SDL_RenderReadPixels(renderer,&gunEye,SDL_PIXELFORMAT_RGB888,gunTargetSurface->pixels,gunTargetSurface->pitch);
+
+						Uint8 *poff = (Uint8 *)gunTargetSurface->pixels;
+						Uint32 pixel = *(Uint32 *)poff;
+						SDL_Color pcolor = { 0, 0, 0, SDL_ALPHA_OPAQUE };
+						SDL_GetRGB(pixel, gunTargetSurface->format, &pcolor.r, &pcolor.g, &pcolor.b);
+						gunLight = (pcolor.r+pcolor.g+pcolor.b)/3;
+						if(gunLight < 6){
+							gunSawBlack = 1;
+							gunLatchedData |= (1<<LG_SENSE_BIT);
+						}else if(gunSawBlack && gunLight > 216){
+							gunSawBlack = 0;
+							gunLatchedData &= ~(1<<LG_SENSE_BIT);//only triggers for 1 frame, until reset by seeing black
+						}else if(gunLight > 60)
+							gunSawBlack = 0;
+
+						//printf("[%d]\n", gunLight);
+
+						buttons[0] = gunLatchedData;
+					}
+					//else
+					//	buttons[0] |= 0xFFFF8000;
+
 
 #ifndef NOGDB
 					singleStep = nextSingleStep;
@@ -2019,8 +2065,8 @@ bool avr8::init_gui()
 	atexit(SDL_Quit);
 	init_joysticks();
 
-	int monitorWidth = 630;
-	int monitorHeight = 448;
+	monitorWidth = 630;
+	monitorHeight = 448;
 	if(orientation == 90 || orientation == 270){
 	    monitorHeight = 630;
 	}
@@ -2175,7 +2221,7 @@ void avr8::handle_key_down(SDL_Event &ev)
 {
 	static int ssnum = 0;
 	char ssbuf[32];
-	static const char *pad_mode_strings[4] = {"NES pad.","SNES pad.","SNES 2p pad.","SNES mouse."};
+	static const char *pad_mode_strings[5] = {"NES pad.","SNES pad.","SNES 2p pad.","SNES mouse.", "SNES lightgun."};
 
 	if(uzeKbEnabled)
 	{
@@ -2200,10 +2246,21 @@ void avr8::handle_key_down(SDL_Event &ev)
 					pad_mode = SNES_PAD;
 				else if(pad_mode == SNES_PAD)
 					pad_mode = SNES_PAD2;
-				else if(pad_mode == SNES_PAD2)
+				else if(pad_mode == SNES_PAD2){
 					pad_mode = SNES_MOUSE;
-				else
+					SDL_ShowCursor(SDL_DISABLE);
+				}else if(pad_mode == SNES_MOUSE){
+					pad_mode = SNES_LIGHTGUN;
+					if(gunCursor != NULL)
+    						SDL_SetCursor(gunCursor);
+
+    					SDL_ShowCursor(SDL_ENABLE);
+				}else{
 					pad_mode = NES_PAD;
+					SDL_SetCursor(SDL_GetDefaultCursor());
+					SDL_ShowCursor(SDL_ENABLE);
+				}
+
 				puts(pad_mode_strings[pad_mode]); 
 				break;
 			case SDLK_6:
@@ -2261,7 +2318,7 @@ void avr8::handle_key_down(SDL_Event &ev)
 			case SDLK_F1:
 				puts("1/2 - Adjust left edge lock");
 				puts("3/4 - Adjust top edge lock");
-				puts(" 5  - Toggle NES/SNES 1p/SNES 2p/SNES mouse mode (default is SNES pad)");
+				puts(" 5  - Toggle NES/SNES 1p/SNES 2p/SNES mouse/Lightgun mode (default is SNES pad)");
 				puts(" 6  - Mouse sensitivity scale factor");
 				puts(" 7  - Re-map joystick");
 				puts(" F1 - This help text");
@@ -2331,7 +2388,16 @@ keymap snes_mouse[] =
 {
 	END_OF_MAP
 };
-keymap *keymaps[] = { nes_one_player, snes_one_player, snes_two_players, snes_mouse };
+
+keymap snes_lightgun[] =
+{
+	{ SDLK_s, 0, SNES_B }, { SDLK_z, 0, SNES_Y }, { SDLK_TAB, 0, PAD_SELECT }, { SDLK_RETURN, 0, PAD_START },
+	{ SDLK_UP, 0, PAD_UP }, { SDLK_DOWN, 0, PAD_DOWN }, { SDLK_LEFT, 0, PAD_LEFT }, { SDLK_RIGHT, 0, PAD_RIGHT },
+	{ SDLK_a, 0, SNES_A }, { SDLK_x, 0, SNES_X }, { SDLK_LSHIFT, 0, SNES_LSH }, { SDLK_RSHIFT, 0, SNES_RSH },
+	END_OF_MAP
+};
+
+keymap *keymaps[] = { nes_one_player, snes_one_player, snes_two_players, snes_mouse, snes_lightgun };
 
 void avr8::update_buttons(int key,bool down)
 {
@@ -3084,4 +3150,3 @@ void avr8::idle(void){
 
     SDL_Delay(5);
 }
-
