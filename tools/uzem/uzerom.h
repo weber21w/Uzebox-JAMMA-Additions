@@ -32,25 +32,26 @@ OTHER DEALINGS IN THE SOFTWARE.
 #ifndef UZEROM_H
 #define UZEROM_H
 
-#define HEADER_VERSION 1
-#define VERSION_MAJOR 1
-#define VERSION_MINOR 0
-#define MAX_PROG_SIZE 61440 //65536-4096
-#define HEADER_SIZE 512
+#define HEADER_VERSION	1
+#define VERSION_MAJOR	1
+#define VERSION_MINOR	0
+#define MAX_PROG_SIZE	61440 //65536-4096
+#define HEADER_SIZE	512
 
-#define PERIPHERAL_MOUSE 1
-#define PERIPHERAL_KEYBOARD 2
-#define PERIPHERAL_MULTITAP 4
-#define PERIPHERAL_ESP8266 8
+#define PERIPHERAL_MOUSE	1
+#define PERIPHERAL_KEYBOARD	2
+#define PERIPHERAL_MULTITAP	4
+#define PERIPHERAL_ESP8266	8
+#define PERIPHERAL_LIGHTGUN	16
 
-#define JAMMA_ROTATE_90 1
-#define JAMMA_ROTATE_180 2
-#define JAMMA_ROTATE_270 4
-#define JAMMA_FLIP_H 8
-#define JAMMA_FLIP_V 16
-#define JAMMA_B0 32 //future use...
-#define JAMMA_B1 64
-#define JAMMA_B2 128
+#define JAMMA_ROTATE_90		1
+#define JAMMA_ROTATE_180	2
+#define JAMMA_ROTATE_270	4
+#define JAMMA_FLIP_H		8
+#define JAMMA_FLIP_V		16
+#define JAMMA_B0		32 //future use...
+#define JAMMA_B1		64
+#define JAMMA_B2		128
 
 #pragma pack( 1 )
 struct RomHeader{//if this is modified, packrom.cpp needs to be updated
