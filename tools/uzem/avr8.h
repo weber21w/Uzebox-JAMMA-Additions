@@ -482,7 +482,7 @@ public:
 	joyMapSettings jmap;
 	// SNES bit order:  B, Y, Select, Start, Up, Down, Left, Right, A, X, L, R
 	// NES bit order:  A, B, Select, Start, Up, Down, Left, Right
-	u32 buttons[2], latched_buttons[2];
+	u32 buttons[2], latched_buttons[2], controllersPlugged;
 	int mouse_scale;
 	enum { NES_PAD, SNES_PAD, SNES_PAD2, SNES_MOUSE, SNES_LIGHTGUN } pad_mode;
 	const char* joystickFile;

@@ -441,19 +441,18 @@ void avr8::write_io_x(u8 addr,u8 value)
 						shutdown(0);
 					}
 
-					buttons[0] |= 0xFFFF8000;
+					//io[ports::PORTA] |= 0x3;//both controllers connected(else kernel reports unplugged, see ReadControllers())
+					buttons[0] |= 0xFFFF8000;//emulate joypad, or multi-button mouse/lightgun
 
 					if (pad_mode == SNES_MOUSE)
 					{
-						// http://www.repairfaq.org/REPAIR/F_SNES.html
-						// we always report "low sensitivity"
 						int mouse_dx, mouse_dy;
 						u8 mouse_buttons = SDL_GetRelativeMouseState(&mouse_dx,&mouse_dy);
 						mouse_dx >>= mouse_scale;
 						mouse_dy >>= mouse_scale;
 						// clear high bit so we know it's the mouse
 						buttons[0] = (encode_delta(mouse_dx) << 24)
-							| (encode_delta(mouse_dy) << 16) | 0x7FFF;
+							| (encode_delta(mouse_dy) << 16) | 0x7000;//0x7FFF;
 						if (mouse_buttons & SDL_BUTTON_LMASK)
 							buttons[0] &= ~(1<<9);
 						if (mouse_buttons & SDL_BUTTON_RMASK)
@@ -481,11 +480,13 @@ void avr8::write_io_x(u8 addr,u8 value)
 							gunEye.w = gunEye.h = 1; //1x1 target surface to read from Renderer
     							SDL_ShowCursor(SDL_ENABLE);
 						}
-						gunLatchedData = ~((1<<LG_TRIGGER_BIT)|buttons[0]);//trigger is inverted(can be used as signature)
+
+						//buttons[0] = ~((1<<LG_TRIGGER_BIT)|~(buttons[0]));//trigger is inverted(can be used as signature)
 						u8 gun_buttons = SDL_GetMouseState(&gunEye.x,&gunEye.y);
 
-						if (gun_buttons & SDL_BUTTON_LMASK)//trigger pressed(inverted)
-							gunLatchedData |= (1<<LG_TRIGGER_BIT);//trigger is inverted(pulled = 0)
+						buttons[0] |= (1<<LG_TRIGGER_BIT);
+						if (!(gun_buttons & SDL_BUTTON_LMASK))//trigger pressed(inverted)
+							buttons[0] ^= (1<<LG_TRIGGER_BIT);//trigger is inverted(pulled = 0)
 
 						//relatively slow, but it's non-trivial to convert to surface coordinates directly as the window scales...
 						SDL_RenderReadPixels(renderer,&gunEye,SDL_PIXELFORMAT_RGB888,gunTargetSurface->pixels,gunTargetSurface->pitch);
@@ -495,18 +496,22 @@ void avr8::write_io_x(u8 addr,u8 value)
 						SDL_Color pcolor = { 0, 0, 0, SDL_ALPHA_OPAQUE };
 						SDL_GetRGB(pixel, gunTargetSurface->format, &pcolor.r, &pcolor.g, &pcolor.b);
 						gunLight = (pcolor.r+pcolor.g+pcolor.b)/3;
+						buttons[0] |= (1<<LG_SENSE_BIT);
 						if(gunLight < 6){
+//if(1){printf("BLACK\n");}
 							gunSawBlack = 1;
-							gunLatchedData |= (1<<LG_SENSE_BIT);
-						}else if(gunSawBlack && gunLight > 216){
+						}else if(gunSawBlack && gunLight > 200){
+//printf("WHITE\n");
+//sleep(4);
 							gunSawBlack = 0;
-							gunLatchedData &= ~(1<<LG_SENSE_BIT);//only triggers for 1 frame, until reset by seeing black
-						}else if(gunLight > 60)
+							buttons[0] &= ~(1<<LG_SENSE_BIT);//only triggers for 1 frame, until reset by seeing black
+						}else if(gunLight > 60){
+//if(1){printf("GREY\n");}
 							gunSawBlack = 0;
-
+						}
 						//printf("[%d]\n", gunLight);
 
-						buttons[0] = gunLatchedData;
+						//buttons[0] = gunLatchedData;
 					}
 					//else
 					//	buttons[0] |= 0xFFFF8000;
@@ -543,15 +548,16 @@ void avr8::write_io_x(u8 addr,u8 value)
 		else if (went_low == (1<<3))	// CLOCK
 		{
 			if (new_input_mode)	PINA = u8((latched_buttons[0] & 1) | ((latched_buttons[1] & 1) << 1));
+
 			latched_buttons[0] >>= 1;
 			latched_buttons[1] >>= 1;
-
 			if ((latched_buttons[1] < 0xFFFFF) && !new_input_mode)
 			{
 				//New input routines detected, switching emulation method
 				new_input_mode = true;
 			}
 		}
+
 		if (!new_input_mode) PINA = u8((latched_buttons[0] & 1) | ((latched_buttons[1] & 1) << 1));
 
 
@@ -2139,6 +2145,7 @@ bool avr8::init_gui()
 	latched_buttons[0] = buttons[0] = ~0;
 	latched_buttons[1] = buttons[1] = ~0;
 	mouse_scale = 1;
+	controllersPlugged = 0x3;
 
 	// Precompute final palette for speed.
 	// Should build some NTSC compensation magic in here too.
@@ -2241,7 +2248,8 @@ void avr8::handle_key_down(SDL_Event &ev)
 			case SDLK_2: if (left_edge < 2047U - ((VIDEO_DISP_WIDTH * 7U) / 3U)) { left_edge++; } printf("left=%u\n",left_edge); break;
 			case SDLK_3: scanline_top--; printf("top=%d\n",scanline_top); break;
 			case SDLK_4: scanline_top++; printf("top=%d\n",scanline_top); break;
-			case SDLK_5: 
+			case SDLK_5:
+				buttons[0] = buttons[1] = ~0;
 				if (pad_mode == NES_PAD)
 					pad_mode = SNES_PAD;
 				else if(pad_mode == SNES_PAD)
@@ -2386,7 +2394,11 @@ keymap snes_two_players[] =
 
 keymap snes_mouse[] =
 {
+	{ SDLK_s, 0, SNES_B }, { SDLK_z, 0, SNES_Y }, { SDLK_TAB, 0, PAD_SELECT }, { SDLK_RETURN, 0, PAD_START },
+	{ SDLK_UP, 0, PAD_UP }, { SDLK_DOWN, 0, PAD_DOWN }, { SDLK_LEFT, 0, PAD_LEFT }, { SDLK_RIGHT, 0, PAD_RIGHT },
+	{ SDLK_a, 0, SNES_A }, { SDLK_x, 0, SNES_X }, { SDLK_LSHIFT, 0, SNES_LSH }, { SDLK_RSHIFT, 0, SNES_RSH },
 	END_OF_MAP
+
 };
 
 keymap snes_lightgun[] =
@@ -3150,3 +3162,4 @@ void avr8::idle(void){
 
     SDL_Delay(5);
 }
+
