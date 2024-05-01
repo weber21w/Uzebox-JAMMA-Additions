@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<gfx-xform version="1">
+	<input file="../data/png/compressed-font.png" type="png" tile-width="8" tile-height="8" />
+
+	<output file="../data/compressed-font.inc" type="1bpp">
+		<tiles var-name="compressed_font"/>
+	</output>
+
+</gfx-xform>

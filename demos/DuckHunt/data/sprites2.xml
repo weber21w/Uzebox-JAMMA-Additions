@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+<gfx-xform version="1">
+	<input file="../data/png/sprites2-partitioned.png" type="png" tile-width="8" tile-height="8" />
+
+	<output file="../data/sprites2.inc">
+
+		<tiles var-name="sprite_data2"/>
+
+		<maps pointers-size="8"> 
+			<map var-name="duck_map" left="0" top="0" width="5" height="50"/>
+		</maps>
+
+	</output>
+
+</gfx-xform>
