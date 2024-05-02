@@ -21,9 +21,9 @@ extern uint8_t free_tile_index;
 #define DUCK_COLOR_BLUE_MAGENTA	1
 #define DUCK_COLOR_RED_BLACK	2
 
-#define DUCK_MIN_READY	15
+#define DUCK_MIN_READY		15
 #define DUCK_HIT_FRAMES		24//frames in the initial shot state
-#define DUCK_SPIN_FRAMES	3//original was 5, but there were only 2 unique: 4*3 vs 2*5
+#define DUCK_SPIN_FRAMES	5*1//original was 5, but there were only 2 unique: 4*3 vs 2*5
 
 #define SFX_SHOOT	4
 #define SFX_LAUGH	5	
@@ -57,12 +57,12 @@ uint8_t gameRound;
 const uint8_t sine_table[MAX_ANGLES] PROGMEM = { 0xff, 0xfd, 0xf5, 0xea, 0xda, 0xc6, 0xb0, 0x98,
 0x80, 0x67, 0x4f, 0x39, 0x25, 0x15, 0xa, 0x2, 0x0, 0x2, 0xa, 0x15, 0x25, 0x39, 0x4f, 0x67, 0x80, 0x98, 0xb0, 0xc6, 0xda, 0xea, 0xf5, 0xfd };
 
-uint8_t fast_sine(uint8_t a){
+uint16_t fast_sine(uint8_t a){
 		a %= MAX_ANGLES;
 		return pgm_read_byte(&sine_table[a]);
 }
 
-uint8_t fast_cosine(uint8_t a){
+uint16_t fast_cosine(uint8_t a){
 	a += (MAX_ANGLES/4);
 	a %= MAX_ANGLES;
 	return pgm_read_byte(&sine_table[a]);
@@ -81,7 +81,7 @@ uint8_t duck_frame[MAX_DUCKS];
 uint8_t duck_timer[MAX_DUCKS];
 uint8_t escape_timer;//time until all ducks will disappear upon hitting a border(except bottom)
 
-#define DUCK_START_Y		140
+#define DUCK_START_Y		108
 
 #define GAME_CHAR_ZERO		0x8A
 

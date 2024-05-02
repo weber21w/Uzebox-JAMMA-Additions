@@ -343,6 +343,7 @@ return;
 
 void DogRetrieve(){
 	uint8_t numHits = 0;
+	RedrawHUD();
 	WaitVsync(68);
 	for(uint8_t i=0;i<MAX_DUCKS;i++){
 		if(duck_state[i] == STATE_KILLED)
@@ -372,8 +373,8 @@ void LaunchDuck(uint8_t d){
 		t = 64-(GetPrngNumber(0)%43);//min 22
 		t += (GetPrngNumber(0)%33);//max 96
 	}
-	duck_y[d] = DUCK_START_Y;
-	duck_x[d] = t;
+	duck_y[d] = (int16_t)(DUCK_START_Y*256UL);
+	duck_x[d] = (int16_t)(t*256UL);
 	duck_timer[d] = 16+(GetPrngNumber(0)%33);
 	//t = (GetPrngNumber(0)%3);//get duck type
 	//duck_state[d] = (t<<6);
@@ -402,38 +403,41 @@ void DogPopUp(){
 }
 
 void DrawHitbox(uint8_t d){
-	for(uint8_t i=0;i<64;i++)
-		ram_tiles[i] = 0;
-//	SetUserRamTileCount(1);
-	FillVram(0);
+	SetTileTable(title_data);
+	FillVram(RAM_TILES_COUNT+8);//black screen
 
-	if(d >= MAX_DUCKS)
-		return;
 	uint8_t p;
 	if(gameRound < 23)//rough approximation of shrinking hitbox size..
 		p = 32;
 	else if(gameRound < 27)
 		p = 28-(gameRound-23);
 	p = 23;
+
 	uint8_t dx = duck_x[d]>>8;
 	uint8_t dy = duck_y[d]>>8;
 	//TODO GET OFFSET FOR FRAME
 	uint8_t ft = p/8;
 	p %= 8;
 	p = 8-p;
-	free_tile_index = 1;
+
+dx=10;dy=10;
+	//free_tile_index = 0;
 	for(uint8_t y=0;y<ft;y++){
 		for(uint8_t x=0;x<ft;x++){
-			BlitSprite(SPRITE_BANK1, SPRITE_DATA2_SIZE-5, dx+(x*8), dy+(y*8));	
+			SetTile((dx/8)+x, (dy/8)+y, 11);//BlitSprite(SPRITE_BANK1, SPRITE_DATA2_SIZE-5, dx+(x*8), dy+(y*8));	
 		}
 	}
-	//free_tile_index = 1;//we only draw a single one per frame
-//	for(uint8_t y=0;y<ft;y++)
-	//	BlitSprite(SPRITE_BANK1, SPRITE_DATA2_SIZE-5, (dx+(ft*8))-p, (dy+(y*8)));
-//	for(uint8_t x=0;x<ft;x++)
-	//	BlitSprite(SPRITE_BANK1, SPRITE_DATA2_SIZE-5, (dx+(x*8)), (dy+(ft*8))-p);
+	free_tile_index = 0;//we only draw a single one per frame
+	for(uint8_t y=0;y<ft;y++)
+		BlitSprite(SPRITE_BANK1, SPRITE_DATA2_SIZE-5, (dx+(ft*8))-p, (dy+(y*8)));
+	for(uint8_t x=0;x<ft;x++)
+		BlitSprite(SPRITE_BANK1, SPRITE_DATA2_SIZE-5, (dx+(x*8)), (dy+(ft*8))-p);
 
 	BlitSprite(SPRITE_BANK1, SPRITE_DATA2_SIZE-5, (dx+(ft*8))-p, dy+((ft*8))-p);
+
+	WaitVsync(1);
+	SetTileTable(tile_data);
+	DrawMap2(0, 0, map_main);
 }
 
 void InitDucks(){
@@ -474,46 +478,52 @@ uint8_t UpdateDucks(uint8_t rt_start){
 		if(duck_state[d] == STATE_ACTIVE){//can change to: STATE_HIT or STATE_ESCAPED
 			if(!duck_timer[d]){//time to change directions?
 				duck_timer[d] = DUCK_MIN_DIR_TIME+GetPrngNumber((255-DUCK_MIN_DIR_TIME)-gameRound);
+//	duck_timer[d] = 120;
+	duck_vel[d] = 2;
 				uint8_t t1 = GetPrngNumber(DUCK_MAX_DIR_CHANGE/2);
 				uint8_t t2 = GetPrngNumber(DUCK_MAX_DIR_CHANGE/2);
 				duck_angle[d] += t1;
 				duck_angle[d] -= t2;
 				duck_angle[d] %= 16;
 			}else{//update duck movement
-				duck_frame[d] = (duck_timer[d]&0b00011100)>>2;
-				uint8_t nx = duck_x[d] + (int16_t)(duck_vel[d]*(fast_cosine(duck_angle[d])));
-				uint8_t ny = duck_y[d] + (int16_t)(duck_vel[d]*(fast_sine(duck_angle[d])));
+				duck_frame[d] = ((duck_timer[d]&0b00111000)>>3)%3;
+				int16_t nx = duck_x[d] + (int16_t)(duck_vel[d]*(fast_cosine(duck_angle[d])));
+				int16_t ny = duck_y[d] + (int16_t)(duck_vel[d]*(fast_sine(duck_angle[d])));
 				uint8_t w = 0;
-				if((nx>>8) < 1)//hit left edge?
+				if(nx < (int16_t)(4UL*256UL))//hit left edge?
 					w = 1;
-				else if((nx>>8) >= ((SCREEN_TILES_H*TILE_WIDTH)-40))//right edge?
+				else if(nx >= (int16_t)(((SCREEN_TILES_H*TILE_WIDTH)-44UL)*256UL))//right edge?
 					w = 3;
-				else if((ny>>8) < 1)//top edge?
+				else if(ny < 4UL*256UL)//top edge?
 					w = 2;
-				else if((ny>>8) >= ((24*TILE_HEIGHT)-40))//bottom edge?
+				else if(ny >= (int16_t)(((20UL*TILE_HEIGHT)-44UL))*256UL)//bottom edge?
 					w = 4;
+
 				if(w && !escape_timer){
 					duck_state[d] = STATE_ESCAPED;
 				}else if(w){
 					duck_angle[d] += (3*(MAX_ANGLES/4));
+					duck_angle[d] %= MAX_ANGLES;
 				}else{//normal movement
 					duck_x[d] = nx;
 					duck_y[d] = ny;
 				}
 				if(duck_angle[d] >= (MAX_ANGLES/2))
 					dmirror = 1;
+				else
+					dmirror = 0;
 
 				if(duck_angle[d] <= (MAX_ANGLES/8)){
 					dframe = 3;
 				}else if(duck_angle[d] <= 5*(MAX_ANGLES/8)){
-					dframe = 3;
+					dframe = 0;
 				}else if(duck_angle[d] > 7*(MAX_ANGLES/8)){
 					dframe = 3;
 				}
 				dframe += duck_frame[d];
 			}
 			//periodically blank out duck icon for active ducks
-			SetTile((DUCK_SCORE_X+10)-targetsRemaining+d, DUCK_SCORE_Y, (globalFrame&0b00010000)?8:DUCK_SCORE_WHITE);
+			SetTile((DUCK_SCORE_X+10)-targetsRemaining+d, DUCK_SCORE_Y, ((globalFrame>>4)&1)?DUCK_SCORE_BLANK:DUCK_SCORE_WHITE);
 		}
 
 		if(duck_state[d] == STATE_HIT){//can change to: STATE_FALLING
@@ -525,7 +535,6 @@ uint8_t UpdateDucks(uint8_t rt_start){
 		}
 
 		if(duck_state[d] == STATE_FALLING){//can change to STATE_KILLED(landed after fall)
-			duck_y[d] &= 0xFF00;//disregard 8:8 subpixel(for clarity, not necessary...)
 			duck_y[d] += (1<<9);//move down 1 full pixel
 			if(!duck_timer[d]){
 				duck_timer[d] = DUCK_SPIN_FRAMES;
@@ -536,20 +545,22 @@ uint8_t UpdateDucks(uint8_t rt_start){
 			if((duck_y[d]>>8) >= DUCK_START_Y){
 				duck_state[d] = STATE_KILLED;
 				TriggerFx(SFX_GROUND,255,1);
-				SetTile(DUCK_SCORE_X+targetsRemaining+d, DUCK_SCORE_Y, DUCK_SCORE_RED);
+				SetTile((DUCK_SCORE_X+10)-(targetsRemaining+d), DUCK_SCORE_Y, DUCK_SCORE_RED);
 				continue;//no draw
 			}
 			if(duck_frame[d] == 9){//frame 9 is a mirrored frame 7...
 				dframe = 7;
 				dmirror = 1;
+			}else if(duck_frame[d] == 10){
+				dframe = 9;
 			}else
 				dframe = duck_frame[d];
 		}
 
 		uint16_t map_pos = (uint16_t)(2+(dframe*5*5));
 		uint8_t t;
-		uint8_t dx = duck_x[d]>>8;
-		uint8_t dy = duck_y[d]>>8;
+		uint8_t dx = (duck_x[d]/256UL);
+		uint8_t dy = (duck_y[d]/256UL);
 		if(!dmirror){
 			for(uint8_t i=0; i<5*5; i++){
 				t = pgm_read_byte(&duck_map[map_pos]);
@@ -631,16 +642,23 @@ void Shoot(){//hits are detected later, due to variable input latency
 	shotsRemaining--;
 	//RedrawAmmo();
 	gunCooldown = GUN_COOLDOWN;
+	gunTargets = 0;
+	for(uint8_t i=0;i<MAX_DUCKS;i++){
+		if(duck_state[i] == STATE_ACTIVE)
+			gunTargets++;
+	}
+	if(!gunTargets)
+		return;
 
 	BlackScreen(0);
-	WaitVsync(60);
+	WaitVsync(10);
 	gunTimer = 1;
 	gunTargets = 0;
 	for(uint8_t i=0;i<MAX_DUCKS;i++){
 		if(duck_state[i] == STATE_ACTIVE){
 			gunTargets++;
 			DrawHitbox(i);
-			WaitVsync(60);
+			//WaitVsync(60);
 		}
 	}
 	//after gunLag+gunTargets frames, we check the buffer for specific hits...
@@ -691,7 +709,7 @@ void CheckDuckShot(){
 		if(GunSenseFrame(gunLag+tnum+1) && !GunSenseFrame(gunLag+tnum+0)){
 			duck_state[i] = STATE_HIT;
 			duck_timer[i] = DUCK_HIT_FRAMES;
-			scoreBits |= (1<<(12-targetsRemaining)+i);//red duck icon...
+			scoreBits |= (1<<(10-targetsRemaining)+i);//red duck icon...
 			if(gameRound < 11)//as per original, duck types are worth different points...but all have the same behavior/difficulty!
 				score += duck_type[i]*8;//800
 			else
@@ -730,14 +748,17 @@ MAIN_TOP:
 ROUND_TOP:
 	targetsRemaining = 10;
 	shotsRemaining = 3;
+	scoreBits = 0;
 	RedrawHUD();
 	DogIntro();
 	InitDucks();
 	while(targetsRemaining){//still have targets left this round?
 		WaitVsync(1);
-		DrawMap2(0, 0, map_main);
 		if(!(joypad1_status_lo & LG_TRIGGER) && (last_joypad1_status_lo & LG_TRIGGER))
 			Shoot();
+		else
+			DrawMap2(0, 0, map_main);
+
 		CheckDuckShot();//directly sets duck state if a shot is detected...
 		if(!UpdateDucks(0)){
 			targetsRemaining -= (1+gameType);
