@@ -1,0 +1,24 @@
+<?xml version="1.0" ?>
+<gfx-xform version="1">
+	<input file="../data/sprites.png" type="png" tile-width="8" tile-height="8" />
+
+	<output file="../data/sprites.inc">
+
+		<tiles var-name="sprite_data"/>
+
+		<maps pointers-size="8"> 
+			<map var-name="map_cursor" left="0" top="1" width="2" height="2"/>
+			<map var-name="map_hammerUp" left="2" top="1" width="3" height="3"/>
+			<map var-name="map_hammerDown" left="5" top="1" width="3" height="3"/>
+
+			<map var-name="map_startBtnUp" left="0" top="4" width="5" height="2"/>
+			<map var-name="map_startBtnDown" left="0" top="6" width="5" height="2"/>
+
+			<map var-name="map_ready" left="0" top="0" width="7" height="2"/>
+			<map var-name="map_whack" left="0" top="0" width="7" height="2"/>
+			<map var-name="map_gameOver" left="0" top="12" width="9" height="2"/>
+		</maps>
+
+	</output>
+
+</gfx-xform>
