@@ -24,27 +24,22 @@
 #include <uzebox.h>
 #include <gui.h>
 
-#include "data/Whacksong.inc"
+#include "data/whacksong.inc"
 
 #include "data/patches.inc"
-#include "data/cursor.pic.inc"
-#include "data/cursor.map.inc"
+#include "data/tiles.inc"
+#include "data/sprites.inc"
 
-#include "data/mole.map.inc"
-#include "data/mole.pic.inc"
-#include "data/fonts_8x8.pic.inc"
-
-#include "data/title.pic.inc"
-#include "data/fonts_8x8_2.pic.inc"
-#include "data/title.map.inc"
-
+#define BTN_GUN_TRIGGER	(1U<<12U)
+#define BTN_GUN_SENSE	(1U<<13U)
 
 #define FIELD_TOP 5
 #define BUTTONS_COUNT 1
 #define BUTTON_UNPRESSED 0
 #define BUTTON_PRESSED 1
 
-
+uint8_t calibrateGun();
+uint8_t lightgunScan();
 char createMyButton(unsigned char x,unsigned char y,const char *normalMapPtr,const char *pushedMapPtr);
 void processMouseMovement(void);
 void processHammer(void);
@@ -55,6 +50,17 @@ void WaitKey();
 //void DetectControllers();
 void menu();
 void PrintSpeed();
+
+//unsigned char vram_buffer[VRAM_SIZE];
+void PushVRAM(){
+//	for(uint16_t i=0;i<VRAM_SIZE;i++)
+//		vram_buffer[i] = vram[i];
+}
+
+void PullVRAM(){
+//	for(uint16_t i=0;i<VRAM_SIZE;i++)
+//		vram[i] = vram_buffer[i];
+}
 
 const char strNotDetected[] PROGMEM ="MOUSE NOT DETECTED!";
 const char strHighScore[] PROGMEM="HI-SCORE:";
@@ -71,6 +77,10 @@ const char strMed[] PROGMEM="MED ";
 const char strHi[] PROGMEM= "HIGH";
 
 const char strError[] PROGMEM= "ERROR:";
+
+#define MAX_GUN_LAG	10
+uint8_t gunLag = 5;
+uint8_t gunSenseBuf[MAX_GUN_LAG];
 
 struct ButtonStruct
 {
@@ -114,6 +124,7 @@ struct EepromBlockSaveGameStruct{
 };
 struct EepromBlockSaveGameStruct saveGameBlock;
 
+extern unsigned char ram_tiles[];
 extern unsigned char playDevice,playPort;
 extern unsigned int actionButton;
 int mx,my;
@@ -124,15 +135,14 @@ bool gameOver;
 
 int main(){
 	unsigned char x,y,tmp;
-    SetTileTable(title_tileset);
+    SetTileTable(tile_data);
     ClearVram();
 
-	SetSpritesTileTable(cursor_tileset);
-
+	SetSpritesTileTable(sprite_data);
 	EnableSnesMouse(0,map_cursor);
 	DetectControllers();
 	InitMusicPlayer(patches);
-	SetMouseSensitivity(mouseSpeed);
+	//SetMouseSensitivity(mouseSpeed);
 
 	
 	menu();
@@ -140,8 +150,8 @@ int main(){
 
 	srand(TCNT1);
 
-    SetTileTable(mole_tileset);
-	SetFontTilesIndex(MOLE_TILESET_SIZE);
+  //  SetTileTable(tile_data);
+	SetFontTilesIndex(0);
 
     ClearVram();
 
@@ -160,6 +170,7 @@ int main(){
 	Print(2+10,4,strTime);
 	PrintByte(9+10,4,(time/60),true);
 
+	ClearVram();
 	DrawMap2(2,FIELD_TOP,map_main);
 
 	//create holes
@@ -229,7 +240,10 @@ int main(){
 		
 		}
 
-		DrawMap2(11,FIELD_TOP+7+4,map_gameOver);
+		//DrawMap2(11,FIELD_TOP+7+4,map_gameOver);
+		MapSprite(9,map_gameOver);
+		MoveSprite(9,(11)*8,(FIELD_TOP+7+4)*8,9,2);
+		
 
 		if(molesWhacked>highScore){
 			highScore=molesWhacked;
@@ -251,9 +265,10 @@ void PrintSpeed(){
 }
 
 void menu(){
+
 	unsigned int joy;
-    SetTileTable(title_tileset);
-	SetFontTilesIndex(TITLE_TILESET_SIZE);
+  //  SetTileTable(title_tileset);
+//	SetFontTilesIndex(TITLE_TILESET_SIZE);
     ClearVram();
 
 	DrawMap2(4,8,map_title);
@@ -261,8 +276,9 @@ void menu(){
 	Print(8,12,strStart);
 	Print(10,23,strCopy);
 	Print(3,25,strWeb);
-
-
+actionButton=BTN_B;
+WaitVsync(60);calibrateGun();return;
+	DetectControllers();
 	if(playDevice==0)Print(6,17,strNotDetected);
 
 	StartSong(song_Whacksong);
@@ -305,6 +321,147 @@ void DetectControllers(){
 
 
 }*/
+
+
+void SaveVRAM(){
+	for(uint16_t i=VRAM_SIZE;i<VRAM_SIZE+(MAX_SPRITES);i++){
+		ram_tiles[i] = sprites[i-VRAM_SIZE].flags;
+		sprites[i-VRAM_SIZE].flags = SPRITE_OFF;
+	}
+
+	for(uint16_t i=0;i<VRAM_SIZE;i++)
+		ram_tiles[i] = vram[i];
+}
+
+
+void RestoreVRAM(){
+	for(uint16_t i=0;i<VRAM_SIZE;i++)
+		vram[i] = ram_tiles[i];
+
+	for(uint16_t i=VRAM_SIZE;i<VRAM_SIZE+MAX_SPRITES;i++)
+		sprites[i-VRAM_SIZE].flags = ram_tiles[i];
+}
+
+
+uint8_t calibrateGun(){//returns gun latency frames
+	SaveVRAM();
+
+GUN_CALIBRATE_TOP:
+	ClearVram();//DDRC=0;
+	while(ReadJoypad(0) & BTN_GUN_TRIGGER)//wait for trigger to be released
+		WaitVsync(1);
+
+	Print((SCREEN_TILES_H/2)-12,SCREEN_TILES_V-2,PSTR("SHOOT CENTER TO CALIBRATE"));
+	while(ReadJoypad(0) & BTN_GUN_SENSE)//wait until we don't sense light on the black screen
+		WaitVsync(1);
+
+	while(1){
+		WaitVsync(1);
+		if(ReadJoypad(0) & BTN_GUN_SENSE)//detected light when we shouldn't have?
+			goto GUN_CALIBRATE_TOP;
+		if(ReadJoypad(0) & BTN_GUN_TRIGGER)
+			break;
+	}
+
+	for(uint16_t j=VRAM_SIZE;j<VRAM_SIZE+64;j++){ram_tiles[j] = 0xFF;}//create a white ram_tile if necessary
+	for(uint16_t j=0;j<VRAM_SIZE;j++){vram[j] = VRAM_SIZE/64;}//SetTile(j%VRAM_TILES_H,j/VRAM_TILES_H,WHITE_TILE);
+
+	uint8_t k;
+	for(k=0;k<MAX_GUN_LAG;k++){//display the white frame until it's detected or timed out
+		WaitVsync(1);
+		if(ReadJoypad(0) & BTN_GUN_SENSE){
+			goto GUN_CALIBRATE_END;		}
+	}
+	goto GUN_CALIBRATE_TOP;
+
+GUN_CALIBRATE_END:
+	RestoreVRAM();
+	return k;
+}
+
+
+uint16_t drawTargetMask(uint16_t mask){//draws (active)moles as targets, according to the bitmask and returns the Joypad state
+	ClearVram();
+	for(uint8_t y=0;y<4;y++){
+		for(uint8_t x=0;x<4;x++){
+			if(mask & 0b1000000000000000){
+				if(moles[y][x].active)
+					DrawMap((x*6)+4,(y*4)+FIELD_TOP+3,map_target);
+			}
+			mask <<= 1;
+		}
+	}
+	WaitVsync(1);
+	return ReadJoypad(0);
+}
+
+
+uint8_t lightgunScan(){//performs screen black/white checks to return ((hitColumn<<4)|(hitRow&0x0F)) or 255 for no hit
+	uint8_t gunSensePos = 0;
+	gunSenseBuf[gunSensePos++] = drawTargetMask(0);//black screen, we shouldn't detect light this frame...
+
+	//filter column(0/1 if sensed, otherwise 2/3)
+	gunSenseBuf[gunSensePos++] = drawTargetMask(0b\
+1100\
+1100\
+1100\
+1100\
+);
+	//determine column
+	gunSenseBuf[gunSensePos++] = drawTargetMask(0b\
+0110\
+0110\
+0110\
+0110\
+);
+
+
+	//verify hit(verifies timing, covers row 3, column 3 case not covered elsewhere)
+	gunSenseBuf[gunSensePos++] = drawTargetMask(0b\
+1111\
+1111\
+1111\
+1111\
+);
+
+	//filter row(0/1 if sensed, otherwise 2/3)
+	gunSenseBuf[gunSensePos++] = drawTargetMask(0b\
+1111\
+1111\
+0000\
+0000\
+);
+	//determine row
+	gunSenseBuf[gunSensePos++] = drawTargetMask(0b\
+0000\
+1111\
+1111\
+0000\
+);
+	for(uint8_t i=0;i<gunLag;i++){//make sure gun has had time to see entire sequence
+		WaitVsync(1);
+		gunSenseBuf[gunSensePos++] = ReadJoypad(0);
+	}
+	for(uint8_t i=0;i<gunLag;i++)//compensate the guns signal pattern for measured lag frames
+		gunSenseBuf[i] = gunSenseBuf[i+gunLag];
+
+	uint8_t hitColumn = 255;
+	uint8_t hitRow = 255;
+
+	if(!gunSenseBuf[0] && gunSenseBuf[3]){//saw nothing on blank frame and something on all light frame?
+		if(gunSenseBuf[1])//saw something on first column filter? then column is 0 or 1
+			hitColumn = (gunSenseBuf[2]?1:0);
+		else//otherwise column is 2 or 3
+			hitColumn = (gunSenseBuf[2]?2:3);
+
+		if(gunSenseBuf[4])//saw something on first row filter? then row is 0 or 1
+			hitRow = (gunSenseBuf[5]?1:0);
+		else//otherwise row is 2 or 3
+			hitRow = (gunSenseBuf[5]?2:3);
+	}//otherwise they are pointed at a lightbulb :)
+
+	return (uint8_t)((hitColumn<<4)|(hitRow&0x0F));
+}
 
 unsigned char cnt=0;
 void processMoles(){
@@ -418,8 +575,8 @@ void processMoles(){
 }
 
 void WaitKey(){
-	while((ReadJoypad(playPort)&BTN_MOUSE_LEFT)==0);
-	while((ReadJoypad(playPort)&BTN_MOUSE_LEFT)!=0);
+	while((ReadJoypad(playPort)&BTN_MOUSE_LEFT|BTN_GUN_TRIGGER)==0);
+	while((ReadJoypad(playPort)&BTN_MOUSE_LEFT|BTN_GUN_TRIGGER)!=0);
 }
 
 
@@ -471,13 +628,10 @@ void processMyButtons(){
 	unsigned char i,tx,ty;
 	unsigned int joy=ReadJoypad(playPort);
 	static unsigned int lastButtons;
-
+lightgunScan();
 	tx=(mx+6)>>3;
 	ty=my>>3;
-
-
-
-
+actionButton |= BTN_GUN_TRIGGER;
 
 	for(i=0;i<nextFreeButtonIndex;i++){
 		if(tx>=buttons[i].x && tx<(buttons[i].x+buttons[i].width) && ty>=buttons[i].y && ty<(buttons[i].y+buttons[i].height)){
@@ -510,7 +664,7 @@ void processMyButtons(){
 		TriggerFx(8,0xff,true);
 		mouseSpeed++;
 		if(mouseSpeed==3)mouseSpeed=0;
-		SetMouseSensitivity(mouseSpeed);
+		//SetMouseSensitivity(mouseSpeed);
 		PrintSpeed();
 	}
 
@@ -540,12 +694,13 @@ char createMyButton(unsigned char x,unsigned char y,const char *normalMapPtr,con
 }
 
 
+
 void processMouseMovement(void){
 	unsigned int joy;
 	
 
 
-	//check in case its a SNES pad
+	//check in case its a SNES pad or Lightgun
 
 	if(playDevice==0){
 		joy=ReadJoypad(playPort);
