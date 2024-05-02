@@ -9,12 +9,21 @@ MCU = atmega644
 TARGET = $(GAME).elf
 CC = avr-gcc
 INFO=../gameinfo.properties
+UZEBIN_DIR = ../../../bin
 
 ## Kernel settings
 KERNEL_DIR = ../../../kernel
-KERNEL_OPTIONS  = -DVIDEO_MODE=3 -DINTRO_LOGO=0 -DSOUND_CHANNEL_4_ENABLE=0 
-KERNEL_OPTIONS += -DMAX_SPRITES=9 -DRAM_TILES_COUNT=16 -DSNES_MOUSE=1
 
+## Escape spaces in mixer path (due to custom sounds.inc)
+EMPTY:=
+SPACE:= $(EMPTY) $(EMPTY)
+SPACE_ESC:= \\$(SPACE)
+MIX_PATH:= $(realpath ../data/sounds.inc)
+MIX_PATH_ESC:= $(subst $(SPACE),$(SPACE_ESC),$(MIX_PATH))
+
+KERNEL_OPTIONS  = -DVIDEO_MODE=3 -DSOUND_MIXER=1 -DINTRO_LOGO=0 -DSOUND_CHANNEL_4_ENABLE=0
+KERNEL_OPTIONS += -DMAX_SPRITES=9 -DRAM_TILES_COUNT=22 -DSNES_MOUSE=1 -DTRANSLUCENT_COLOR=0xC6
+KERNEL_OPTIONS += -DMIXER_WAVES=\"$(MIX_PATH_ESC)\" #-DTRUE_RANDOM_GEN=1
 
 ## Options common to compile, link and assembly rules
 COMMON = -mmcu=$(MCU)
@@ -54,8 +63,21 @@ LINKONLYOBJECTS =
 ## Include Directories
 INCLUDES = -I"$(KERNEL_DIR)" 
 
+## Resources
+RESOURCES = ../data/tiles.inc ../data/sprites.inc
+
 ## Build
-all: $(TARGET) $(GAME).hex $(GAME).eep $(GAME).lss $(GAME).uze size
+all: $(RESOURCES) $(TARGET) $(GAME).hex $(GAME).eep $(GAME).lss $(GAME).uze size
+
+## Rebuild graphics resources
+../data/tiles.inc: ../data/tiles.png ../data/tiles.xml
+	$(UZEBIN_DIR)/gconvert ../data/tiles.xml
+
+../data/sprites.inc: ../data/sprites.png ../data/sprites.xml
+	$(UZEBIN_DIR)/gconvert ../data/sprites.xml
+
+#../data/whacksong.inc: ../data/whacksong.mid ../data/compressed-music.cfg
+#	$(UZEBIN_DIR)/gconvert ../data/cursor.xml
 
 ## Compile Kernel files
 uzeboxVideoEngineCore.o: $(KERNEL_DIR)/uzeboxVideoEngineCore.s
@@ -104,7 +126,7 @@ endif
 
 size: ${TARGET}
 	@echo
-	@avr-size ${AVRSIZEFLAGS}
+	@avr-size -C --mcu=${MCU} ${TARGET}
 
 ## Clean target
 .PHONY: clean
