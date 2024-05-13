@@ -9,6 +9,7 @@ MCU = atmega644
 TARGET = $(GAME).elf
 CC = avr-gcc
 INFO=../gameinfo.properties
+UZEBIN_DIR = ../../../bin
 
 ## Kernel settings
 KERNEL_DIR = ../../../kernel
@@ -57,9 +58,9 @@ all: ../data/tiles.inc ../data/sprites.inc $(TARGET) $(GAME).hex $(GAME).eep $(G
 
 ## Regenerate the graphics include file
 ../data/tiles.inc: ../data/tiles.png ../data/tiles.xml
-	gconvert ../data/tiles.xml
+	$(UZEBIN_DIR)/gconvert ../data/tiles.xml
 ../data/sprites.inc: ../data/sprites.png ../data/sprites.xml
-	gconvert ../data/sprites.xml
+	$(UZEBIN_DIR)/gconvert ../data/sprites.xml
 
 ## Compile Kernel files
 uzeboxVideoEngineCore.o: $(KERNEL_DIR)/uzeboxVideoEngineCore.s
@@ -109,4 +110,3 @@ clean:
 
 ## Other dependencies
 -include $(shell mkdir dep 2>/dev/null) $(wildcard dep/*)
-
