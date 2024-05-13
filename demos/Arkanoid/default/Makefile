@@ -9,19 +9,27 @@ MCU = atmega644
 TARGET = $(GAME).elf
 CC = avr-gcc
 INFO=../gameinfo.properties
+UZEBIN_DIR = ../../../bin
+
+## Escape spaces in mixer path (due to custom sounds.inc)
+EMPTY:=
+SPACE:= $(EMPTY) $(EMPTY)
+SPACE_ESC:= \\$(SPACE)
+MIX_PATH:= $(realpath ../data/arkanoid_sounds.inc)
+MIX_PATH_ESC:= $(subst $(SPACE),$(SPACE_ESC),$(MIX_PATH))
 
 ## Kernel settings
 KERNEL_DIR = ../../../kernel
 KERNEL_OPTIONS  = -DVIDEO_MODE=3 -DINTRO_LOGO=0 -DSCROLLING=0
-KERNEL_OPTIONS += -DMIXER_WAVES=\"$(realpath ../data/arkanoid_sounds.inc)\" -DMAX_SPRITES=20 -DRAM_TILES_COUNT=36 -DVRAM_TILES_V=29
-KERNEL_OPTIONS += -DSOUND_MIXER=1
+KERNEL_OPTIONS += -DMAX_SPRITES=20 -DRAM_TILES_COUNT=36 -DVRAM_TILES_V=29
+KERNEL_OPTIONS += -DSOUND_MIXER=1 -DMIXER_WAVES=\"$(MIX_PATH_ESC)\"
 
 ## Options common to compile, link and assembly rules
 COMMON = -mmcu=$(MCU)
 
 ## Compile options common for all C compilation units.
 CFLAGS = $(COMMON)
-CFLAGS += -Wall -gdwarf-2 -std=gnu99 -DF_CPU=28636360UL -Os -fsigned-char -ffunction-sections -fno-toplevel-reorder
+CFLAGS += -Wall -gdwarf-2 -std=gnu99 -DF_CPU=28636360UL -Os -fsigned-char -ffunction-sections -fno-toplevel-reorder -mcall-prologues
 CFLAGS += -MD -MP -MT $(*F).o -MF dep/$(@F).d 
 CFLAGS += $(KERNEL_OPTIONS)
 
@@ -91,7 +99,7 @@ $(TARGET): $(OBJECTS)
 	avr-objdump -h -S $< > $@
 
 %.uze: $(TARGET)
-	-$(UZEBIN_DIR)packrom $(GAME).hex $@ $(INFO)
+	-$(UZEBIN_DIR)/packrom $(GAME).hex $@ $(INFO)
 
 UNAME := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 AVRSIZEFLAGS := -A ${TARGET}
@@ -101,7 +109,7 @@ endif
 
 size: ${TARGET}
 	@echo
-	@avr-size ${AVRSIZEFLAGS}
+	@avr-size -C --mcu=${MCU} ${TARGET}
 
 ## Clean target
 .PHONY: clean
