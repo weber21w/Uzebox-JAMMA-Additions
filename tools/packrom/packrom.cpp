@@ -369,7 +369,7 @@ int main(int argc,char **argv)
 				fprintf(stderr,"\tMultitap: Supported\n");
 
 			}else if(!strncmp(line,"esp8266=support",15)){
-				rom.header.psupport |= PERIPHERAL_KEYBOARD;
+				rom.header.psupport |= PERIPHERAL_ESP8266;
 				fprintf(stderr,"\tESP8266: Supported\n");
 
 			}else if(!strncmp(line,"lightgun=support",16)){
