@@ -498,23 +498,14 @@ void avr8::write_io_x(u8 addr,u8 value)
 						gunLight = (pcolor.r+pcolor.g+pcolor.b)/3;
 						buttons[0] |= (1<<LG_SENSE_BIT);
 						if(gunLight < 6){
-//if(1){printf("BLACK\n");}
 							gunSawBlack = 1;
 						}else if(gunSawBlack && gunLight > 200){
-//printf("WHITE\n");
-//sleep(4);
 							gunSawBlack = 0;
 							buttons[0] &= ~(1<<LG_SENSE_BIT);//only triggers for 1 frame, until reset by seeing black
 						}else if(gunLight > 60){
-//if(1){printf("GREY\n");}
 							gunSawBlack = 0;
 						}
-						//printf("[%d]\n", gunLight);
-
-						//buttons[0] = gunLatchedData;
 					}
-					//else
-					//	buttons[0] |= 0xFFFF8000;
 
 
 #ifndef NOGDB
