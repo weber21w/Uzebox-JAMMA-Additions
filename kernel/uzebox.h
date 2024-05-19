@@ -62,7 +62,8 @@
 	extern void SetFontTilesIndex(unsigned char index);
 	extern void SetFontTable(const char *data);
 	extern void SetTileTable(const char *data);	
-	extern void DrawMap(unsigned char x,unsigned char y,const VRAM_PTR_TYPE *map); 	
+	extern void DrawMap(unsigned char x,unsigned char y,const VRAM_PTR_TYPE *map);
+	extern void DrawMapRLE(unsigned char x,unsigned char y,const VRAM_PTR_TYPE *map);
 	extern void Print(int x,int y,const char *string);
 	extern void PrintRam(int x,int y,unsigned char *string);
 	extern void PrintBinaryByte(char x,char y,unsigned char byte);
